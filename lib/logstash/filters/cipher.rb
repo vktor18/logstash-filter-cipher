@@ -1,4 +1,5 @@
 # encoding: ASCII-8BIT
+
 require "logstash/filters/base"
 require "logstash/namespace"
 require "logstash/json"
@@ -243,10 +244,25 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
             myHash[key] = result
           end
           if @partial_encryption == true
-            printf("this is regex exp : #{regex_exp}\n")
+            # printf("this is regex exp : #{regex_exp}\n")
+            # printf("this is key matched regex:  #{/#{@regex_exp}/.match(myHash[key].to_s)}\n")
 
-            matched = myHash.select { |key, value| key.to_s.match(@regex_exp) } # match the keys with the regex exp and save them to choises
-            printf("this is matched #{matched}\n")
+            # myHash.select { |key, value| key.to_s.scan(@regex_exp)    } # match the keys with the regex exp and save them to choises
+
+            if (/#{@regex_exp}/ =~ key.to_s) != nil
+              #printf("im here #{MatchData}\n")
+              result2 = crypto(event, "#{key}", "#{value}")
+              printf("this is result2 : #{result2}\n")
+              myHash[key] = result2
+            end
+
+            #printf("this is matched #{matched}\n")
+            # if matched.nil?
+            #   printf("matched is null or empty\n")
+            # end
+            #result2 = crypto(event, matched, "#{value}")
+            #myHash[matched] = result2
+
           end
     end
   end
@@ -278,8 +294,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
       message = visit_json(event,nil, parsed)
       event.set("message", message)
-
-
 
 
 

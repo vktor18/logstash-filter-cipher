@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="61e5f440-a5ba-41b7-888c-aaaae6d188ff" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lib/logstash/filters/cipher.rb" afterPath="$PROJECT_DIR$/lib/logstash/filters/cipher.rb" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -20,10 +21,11 @@
       <file leaf-file-name="cipher.rb" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/lib/logstash/filters/cipher.rb">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="446">
-              <caret line="237" column="45" lean-forward="true" selection-start-line="237" selection-start-column="45" selection-end-line="237" selection-end-column="45" />
+            <state relative-caret-position="447">
+              <caret line="252" column="15" lean-forward="false" selection-start-line="252" selection-start-column="15" selection-end-line="252" selection-end-column="15" />
               <folding>
-                <element signature="e#5719#7733#0" expanded="false" />
+                <element signature="e#5720#7734#0" expanded="false" />
+                <element signature="e#9710#10993#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -99,24 +101,6 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="logstash-filter-cipher" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="logstash-filter-cipher" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="logstash-filter-cipher" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="spec" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="filters" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -327,12 +311,12 @@
       <option name="presentableId" value="Default" />
       <updated>1490195038310</updated>
       <workItem from="1490195047625" duration="9726000" />
-      <workItem from="1490206014574" duration="33108000" />
+      <workItem from="1490206014574" duration="45586000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="42834000" />
+    <option name="totallyTimeSpent" value="55312000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="54" y="-11" width="1867" height="1092" extended-state="6" />
@@ -365,7 +349,15 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="ruby-line">
+          <url>file://$PROJECT_DIR$/lib/logstash/filters/cipher.rb</url>
+          <line>164</line>
+        </line-breakpoint>
+      </breakpoints>
+      <option name="time" value="1" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
@@ -374,7 +366,8 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#5719#7733#0" expanded="false" />
+            <element signature="e#5720#7734#0" expanded="false" />
+            <element signature="e#9710#10993#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -412,12 +405,21 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/lib/logstash/filters/cipher.rb">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="446">
-          <caret line="237" column="45" lean-forward="true" selection-start-line="237" selection-start-column="45" selection-end-line="237" selection-end-column="45" />
+        <state relative-caret-position="447">
+          <caret line="252" column="15" lean-forward="false" selection-start-line="252" selection-start-column="15" selection-end-line="252" selection-end-column="15" />
           <folding>
-            <element signature="e#5719#7733#0" expanded="false" />
+            <element signature="e#5720#7734#0" expanded="false" />
+            <element signature="e#9710#10993#0" expanded="false" />
           </folding>
         </state>
       </provider>
