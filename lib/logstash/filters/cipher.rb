@@ -255,17 +255,33 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
         if @partial_encryption != nil
           printf("im here, this is partial encryption #{@partial_encryption}\n")
           printf("this is the value itself #{value}\n")
-          printf("this is the index returned #{/#{@partial_encryption}/ =~ value}\n")
-          printf("this is the matched value #{/#{@partial_encryption}/.match(value).to_i}\n")
-          substr = value[0..(/#{@partial_encryption}/ =~ value)]
-          printf("this is the string from index 0 to the first index of the matched string #{substr}\n")
-          # to_crypt = /#{@partial_encryption}/.match(value.to_s)
-          # rest = value.to_s.length - (substr + to_crypt)
-          # printf("this is the other part of the value that i will concatenate after encryption #{rest}\n")
-          # result3 = crypto(event,"#{key}", to_crypt)
-          # printf("this is the encrypted value #{result3}\n")
-          # printf("this is the value concatenated #{substr + result3 + rest}\n")
-          # myHash[key] = substr + result3 + rest
+          index = /#{@partial_encryption}/ =~ value.to_s
+
+          if index != nil
+            printf("this is the index returned #{index}\n")
+            if value.is_a?(Hash)
+              printf("cannot convert hash to string")
+            else
+            aux = (/#{@partial_encryption}/.match(value)).to_s
+            printf("this is the matched value #{aux}\n")
+            printf("la lunghezza di #{value} è #{value.length}")
+            printf("la lunghezza di aux è #{aux.length}\n")
+            first_part = value[0..index-1]
+            #printf("this is the string from index 0 to the first index of the matched string #{substr}\n")
+            if (value.length - (index + aux.length)) != 0
+              last_part = value[(index+aux.length)..value.length]
+            else
+              last_part = ""
+            end
+
+            result3 = crypto(event, key, aux)
+            printf("this is the crypted value #{result3}\n")
+            printf("now i have to concatenate them back\n")
+            printf("this is the final value #{first_part + result3 + last_part}")
+            myHash[key] = first_part + result3 + last_part
+
+            end
+          end
 
 
         else #is empty
