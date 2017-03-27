@@ -29,13 +29,13 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
 
   # the field to perform the partial encryption
-  config :partial_encryption, :validate => :boolean, :default => false
+  config :partial_encryption, :validate => :string
 
   # The parameter that will match the field to crypt based on regex expression
   config :regex_exp, :validate => :string, :default => ""
 
   # the field to perform encryptiong everywhere it appears
-  config :field_to_crypt, :validate => :string, :default  => ""
+  # config :field_to_crypt, :validate => :string, :default  => ""
 
   # The field to perform filter
   #
@@ -236,34 +236,42 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     myHash.each do |key, value|
       #print("sono dentro il primo ciclo")
       value.is_a?(Hash) ? visit_json(event,key, value) :
-          if "#{key}" == "#{@field_to_crypt}"
-            printf("the key is #{key}:#{value}\n")
-            result = crypto(event,"#{key}","#{value}")
-            printf("this is result man: #{result}\n")
-            # printf("Did i set the partial encryption? : #{@partial_encryption}")
-            myHash[key] = result
-          end
-          if @partial_encryption == true
-            # printf("this is regex exp : #{regex_exp}\n")
-            # printf("this is key matched regex:  #{/#{@regex_exp}/.match(myHash[key].to_s)}\n")
+          # if "#{key}" == "#{@field_to_crypt}"
+          #   printf("the key is #{key}:#{value}\n")
+          #   result = crypto(event,"#{key}","#{value}")
+          #   printf("this is result man: #{result}\n")
+          #   # printf("Did i set the partial encryption? : #{@partial_encryption}")
+          #   myHash[key] = result
+          # end
 
-            # myHash.select { |key, value| key.to_s.scan(@regex_exp)    } # match the keys with the regex exp and save them to choises
+        if (/#{@regex_exp}/ =~ key.to_s) != nil
+          #printf("im here #{MatchData}\n")
+          result2 = crypto(event, "#{key}", "#{value}")
+          printf("this is result2 : #{result2}\n")
+          myHash[key] = result2
+        end
 
-            if (/#{@regex_exp}/ =~ key.to_s) != nil
-              #printf("im here #{MatchData}\n")
-              result2 = crypto(event, "#{key}", "#{value}")
-              printf("this is result2 : #{result2}\n")
-              myHash[key] = result2
-            end
+          # new parameters for encryption
+        if @partial_encryption != nil
+          printf("im here, this is partial encryption #{@partial_encryption}\n")
+          printf("this is the value itself #{value}\n")
+          printf("this is the index returned #{/#{@partial_encryption}/ =~ value}\n")
+          printf("this is the matched value #{/#{@partial_encryption}/.match(value).to_i}\n")
+          substr = value[0..(/#{@partial_encryption}/ =~ value)]
+          printf("this is the string from index 0 to the first index of the matched string #{substr}\n")
+          # to_crypt = /#{@partial_encryption}/.match(value.to_s)
+          # rest = value.to_s.length - (substr + to_crypt)
+          # printf("this is the other part of the value that i will concatenate after encryption #{rest}\n")
+          # result3 = crypto(event,"#{key}", to_crypt)
+          # printf("this is the encrypted value #{result3}\n")
+          # printf("this is the value concatenated #{substr + result3 + rest}\n")
+          # myHash[key] = substr + result3 + rest
 
-            #printf("this is matched #{matched}\n")
-            # if matched.nil?
-            #   printf("matched is null or empty\n")
-            # end
-            #result2 = crypto(event, matched, "#{value}")
-            #myHash[matched] = result2
 
-          end
+        else #is empty
+            result4 = crypto(event,key,value)
+            myHash[key] = result4
+        end
     end
   end
 
