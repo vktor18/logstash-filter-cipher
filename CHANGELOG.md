@@ -1,3 +1,8 @@
+# 3.0
+  - Support multi encryption adding new parameters "key_regex" and "value_regex" that allow users to specify regex expression to crypt multifields and/or
+   values that match the "value_regex"
+  - Remove key parameters and now read from file both iv and key.
+
 # 2.1
   - Support for LogStash 5.x and added mutex.
   - Change source and target from string to array.
