@@ -1,21 +1,9 @@
-# encoding: ASCII-8BIT
-
+# encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
 require "logstash/json"
 require "openssl"
-require "thread"
 require "json"
-require "pry"
-require "ostruct"
-require "concurrent"
-
-class Hash
-  def has_rkey?(search)
-    search = Regexp.new(search.to_s) unless search.is_a?(Regexp)
-    !!keys.detect{ |key| key =~ search }
-  end
-end
 
 
 
@@ -29,10 +17,10 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
 
   # the field to perform the partial encryption
-  config :partial_encryption, :validate => :string
+  config :value_regex, :validate => :string, :required => false
 
   # The parameter that will match the field to crypt based on regex expression
-  config :regex_exp, :validate => :string, :default => ""
+  config :key_regex, :validate => :string, :default => "", :required => true
 
   # the field to perform encryptiong everywhere it appears
   # config :field_to_crypt, :validate => :string, :default  => ""
@@ -67,7 +55,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   #
   # Please read the following: https://github.com/jruby/jruby/wiki/UnlimitedStrengthCrypto
   #
-  config :key, :validate => :string
+  config :path_to_key, :validate => :string
 
   # The key size to pad
   #
@@ -127,7 +115,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   #     filter { cipher { iv => "1234567890123456" }}
   #
   # Deprecated: Please use `iv_random_length` instead
-  config :iv, :validate => :string, :deprecated => "Please use 'iv_random_length'"
+  config :path_to_iv, :validate => :string, :deprecated => "Please use 'iv_random_length'"
 
   # Force an random IV to be used per encryption invocation and specify
   # the length of the random IV that will be generated via:
@@ -161,16 +149,40 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   #     filter { cipher { max_cipher_reuse => 1000 }}
   config :max_cipher_reuse, :validate => :number, :default => 1
 
+  def crypto_map(red_key,red_iv,key, index_start, index_end)
+
+
+    my_hash = {red_key => "goodbye"}
+    puts JSON.generate(my_hash)
+
+    #printf("this is my_object #{my_object} \n")
+
+
+    # for i in data
+    #   var item = data[i];
+    #   # my_object.red_key.push(
+    #   #    "field":item.firstName,
+    #   #    "start_index"  : item.lastName,
+    #   #    "end_index"       : item.age
+    #   # );
+    #
+    # end
+  end
+
+
 
   def crypto(event, key, value)
 
 
     if (event.get(@source).nil? || event.get(@source).empty?)
-      @logger.debug("Event to filter, event 'source' field: " + @source + " was null(nil) or blank, doing nothing")
+      #@logger.debug("Event to filter, event 'source' field: " + @source + " was null(nil) or blank, doing nothing")
       return
     end
-    data = value #cambio la source, cambiarlo ciclicamente
-    printf("data is (deve essere uguale a value) : #{data}\n")
+    if value.to_s == ""
+      return  ""
+    end
+    data = value.to_s #cambio la source, cambiarlo ciclicamente
+    # printf("data is (deve essere uguale a value) : #{data} and the key is #{key}\n")
     if @mode == "decrypt"
       data =  Base64.strict_decode64(data) if @base64 == true
 
@@ -192,7 +204,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     end
 
     result = @cipher.update(data) + @cipher.final
-    printf("questo è il result dopo cipher.update + cipher final : #{result}\n")
+    #printf("questo è il result dopo cipher.update + cipher final : #{result}\n")
 
     if @mode == "encrypt"
 
@@ -202,6 +214,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
       end
 
       result =  Base64.strict_encode64(result).encode("utf-8") if @base64 == true
+      #printf("ho matchato! #{key}:#{value} this is the result after encoding #{result}\n")
 
     end
 
@@ -213,6 +226,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
   else
     @total_cipher_uses += 1
+    #result = result.force_encoding("utf-8") if @mode == "decrypt"
     result = result.force_encoding("utf-8") if @mode == "decrypt"
 
 
@@ -223,7 +237,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     filter_matched(event) if !result.nil?
 
     if !@max_cipher_reuse.nil? and @total_cipher_uses >= @max_cipher_reuse
-      @logger.debug("max_cipher_reuse["+@max_cipher_reuse.to_s+"] reached, total_cipher_uses = "+@total_cipher_uses.to_s)
+      #@logger.debug("max_cipher_reuse["+@max_cipher_reuse.to_s+"] reached, total_cipher_uses = "+@total_cipher_uses.to_s)
       init_cipher
     end
 
@@ -232,64 +246,52 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
 
   def visit_json(event,parent, myHash)
-    #print("sono dentro visit_json")
+
     myHash.each do |key, value|
-      #print("sono dentro il primo ciclo")
       value.is_a?(Hash) ? visit_json(event,key, value) :
-          # if "#{key}" == "#{@field_to_crypt}"
-          #   printf("the key is #{key}:#{value}\n")
-          #   result = crypto(event,"#{key}","#{value}")
-          #   printf("this is result man: #{result}\n")
-          #   # printf("Did i set the partial encryption? : #{@partial_encryption}")
-          #   myHash[key] = result
-          # end
 
-        if (/#{@regex_exp}/ =~ key.to_s) != nil
-          #printf("im here #{MatchData}\n")
-          result2 = crypto(event, "#{key}", "#{value}")
-          printf("this is result2 : #{result2}\n")
-          myHash[key] = result2
-        end
+        if @value_regex != nil
+          if (/#{@key_regex}/ =~ key.to_s) != nil && (/#{@value_regex}/ =~ value.to_s) != nil && !value.is_a?(Hash)
+            # printf("this is the matched value as index  #{(/#{@value_regex}/ =~ value.to_s)}\n")
+            aux = (/#{@value_regex}/.match(value)).to_s # aux will be the matched value.
 
-          # new parameters for encryption
-        if @partial_encryption != nil
-          printf("im here, this is partial encryption #{@partial_encryption}\n")
-          printf("this is the value itself #{value}\n")
-          index = /#{@partial_encryption}/ =~ value.to_s
+            index_start = (/#{@value_regex}/ =~ value.to_s) # where to start.
+            tot_value = value.to_s.length
+            wordEndIndex = -(tot_value - (index_start + aux.length)) # where it finishes from the end.
 
-          if index != nil
-            printf("this is the index returned #{index}\n")
-            if value.is_a?(Hash)
-              printf("cannot convert hash to string")
-            else
-            aux = (/#{@partial_encryption}/.match(value)).to_s
-            printf("this is the matched value #{aux}\n")
-            printf("la lunghezza di #{value} è #{value.length}")
-            printf("la lunghezza di aux è #{aux.length}\n")
-            first_part = value[0..index-1]
-            #printf("this is the string from index 0 to the first index of the matched string #{substr}\n")
-            if (value.length - (index + aux.length)) != 0
-              last_part = value[(index+aux.length)..value.length]
-            else
-              last_part = ""
-            end
+            test = crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex)
 
+            printf("the word to crypt start at index : #{index_start}\n")
+            printf("this is the value lenght: #{tot_value}\n")
+            printf("this is the index for end of the word in all the value field: #{wordEndIndex}\n")
+            printf("this is the object : #{test}\n")
+
+            #printf("this is the matched value as the word #{aux}\n")
             result3 = crypto(event, key, aux)
-            printf("this is the crypted value #{result3}\n")
-            printf("now i have to concatenate them back\n")
-            printf("this is the final value #{first_part + result3 + last_part}")
-            myHash[key] = first_part + result3 + last_part
+            #printf("this is the result of the encryption #{result3}\n")
+            new_value = value.gsub(aux, result3)
+            #printf("this is value at the end  #{new_value}\n")
+            myHash[key] = new_value
 
-            end
+
+
+
+
+          end
+        else
+          if (/#{@key_regex}/ =~ key.to_s) != nil
+            result2 = crypto(event, "#{key}", "#{value}")
+            myHash[key] = result2
+          else
+            #printf("not matched\n")
           end
 
-
-        else #is empty
-            result4 = crypto(event,key,value)
-            myHash[key] = result4
         end
+
     end
   end
+
+
 
 
 
@@ -301,10 +303,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
      }
   end # def register
 
-#  def crypto_regex(hash)
-#    regex = '^.*iban":\s"(.*)",$'
-
-
   def filter(event)
 
 @semaphore.synchronize {
@@ -313,19 +311,40 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     #If decrypt or encrypt fails, we keep it it intact.
     begin
 
-      my_source = event.get(@source)
-      parsed = LogStash::Json.load(my_source)
+      if @key_regex == "message" # keep the previous cipher, crypt everything.
+        my_source = event.get(@source)
+        # printf("this is source #{my_source}\n")
+        crypt_all = crypto(event, @key_regex, my_source)
+        # printf("this is crypt_All #{crypt_all}\n")
+        event.set("message", crypt_all)
+        # printf("ho aggiunto il crypt al messaggio-clone\n")
 
-      message = visit_json(event,nil, parsed)
-      event.set("message", message)
+      else
+        my_source = event.get(@source)
+        #printf("questa è la source prima dell'hash #{my_source}\n")
+        parsed = LogStash::Json.load(my_source)
+        #printf("this is my hash : #{parsed}")
+        message = visit_json(event,nil, parsed)
 
-
-
+        event.set("message", message.to_json)
+        #printf("Non sono il clone, ho aggiunto crypt al messaggio!\n")
+      end
     end
   }
   end # def filter
 
   def init_cipher
+    red = File.read(@path_to_key)
+    #printf("this is what i red #{red}\n")
+    red_iv = File.read(@path_to_iv)
+    #printf("this is the iv i red #{red_iv}")
+
+    # config = ParseConfig.new(@path_to_key)
+    # #printf("this is config #{config}")
+    # key_red = config["key"]
+    # printf("this is the key #{key_red}\n")
+    # iv_red = config["iv"]
+
 
     if !@cipher.nil?
       @cipher.reset
@@ -345,25 +364,29 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
       raise "Bad configuration, aborting."
     end
 
-    if @key.length != @key_size
-      @logger.debug("key length is " + @key.length.to_s + ", padding it to " + @key_size.to_s + " with '" + @key_pad.to_s + "'")
-      @key = @key[0,@key_size].ljust(@key_size,@key_pad)
-    end
+    # if red.length != @key_size
+    #   @logger.debug("key length is " + key_red.length + ", padding it to " + @key_size.to_s + " with '" + @key_pad.to_s + "'")
+    #   red = red[0,@key_size].ljust(@key_size,@key_pad)
+    # end
 
-    @cipher.key = @key
+    # red = red[0,@key_size].ljust(@key_size,@key_pad)
 
-    if !@iv.nil? and !@iv.empty? and @iv_random_length.nil?
-      @cipher.iv = @iv if @iv
+    @cipher.key = red
 
-    elsif !@iv_random_length.nil?
-      @logger.debug("iv_random_length is configured, ignoring any statically defined value for 'iv'", :iv_random_length => @iv_random_length)
-    else
-      raise "cipher plugin: either 'iv' or 'iv_random_length' must be configured, but not both; aborting"
-    end
+    # if !@path_to_iv.nil? and !@path_to_iv.empty? and @iv_random_length.nil?
+    #   @cipher.iv = iv_red if @path_to_iv
+
+    @cipher.iv = red_iv
+
+    # elsif !@iv_random_length.nil?
+    #   @logger.debug("iv_random_length is configured, ignoring any statically defined value for 'iv'", :iv_random_length => @iv_random_length)
+    # else
+    #   raise "cipher plugin: either 'iv' or 'iv_random_length' must be configured, but not both; aborting"
+    # end
 
     @cipher.padding = @cipher_padding if @cipher_padding
 
-    @logger.debug("Cipher initialisation done", :mode => @mode, :key => @key, :iv => @iv, :iv_random => @iv_random, :cipher_padding => @cipher_padding)
+    @logger.debug("Cipher initialisation done", :mode => @mode, :path_to_key => red, :iv_random => @iv_random, :cipher_padding => @cipher_padding)
   end # def init_cipher
 
 end # class LogStash::Filters::Cipher
