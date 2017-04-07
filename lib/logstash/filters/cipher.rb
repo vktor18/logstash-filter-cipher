@@ -149,24 +149,25 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   #     filter { cipher { max_cipher_reuse => 1000 }}
   config :max_cipher_reuse, :validate => :number, :default => 1
 
-  def crypto_map(red_key,red_iv,key, index_start, index_end)
+  def crypto_map(red_key,red_iv,key, index_start, index_end,my_hash_map)
+
+    if my_hash_map.empty?
+      printf("im empty \n")
 
 
-    my_hash = {red_key => "goodbye"}
-    puts JSON.generate(my_hash)
+    else
+      if red_key == my_hash_map[:"#{red_key}"]   # if you have same red_key just append inside
+        
+      else
+        if !same key add new red key
+        my_hash_map[:"#{red_key}"] = {field: key, start: index_start,end: index_end}
+        printf("added a new field! now i look like this : #{my_hash_map}")
+        #my_hash_map[:"#{red_key}"=>[{field: key, start: index_start,end: index_end}]]
+        end
+      end
+    end
 
-    #printf("this is my_object #{my_object} \n")
-
-
-    # for i in data
-    #   var item = data[i];
-    #   # my_object.red_key.push(
-    #   #    "field":item.firstName,
-    #   #    "start_index"  : item.lastName,
-    #   #    "end_index"       : item.age
-    #   # );
-    #
-    # end
+    return my_hash_map
   end
 
 
@@ -247,6 +248,8 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
   def visit_json(event,parent, myHash)
 
+    my_hash_map = {}
+
     myHash.each do |key, value|
       value.is_a?(Hash) ? visit_json(event,key, value) :
 
@@ -259,12 +262,16 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
             tot_value = value.to_s.length
             wordEndIndex = -(tot_value - (index_start + aux.length)) # where it finishes from the end.
 
-            test = crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex)
+            test = crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,my_hash_map)
 
             printf("the word to crypt start at index : #{index_start}\n")
             printf("this is the value lenght: #{tot_value}\n")
             printf("this is the index for end of the word in all the value field: #{wordEndIndex}\n")
             printf("this is the object : #{test}\n")
+
+
+            event.set("cipher_info", test)
+            printf("this is the new field: #{event.get("cipher_info")}\n")
 
             #printf("this is the matched value as the word #{aux}\n")
             result3 = crypto(event, key, aux)
