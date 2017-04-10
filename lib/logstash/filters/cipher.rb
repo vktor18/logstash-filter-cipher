@@ -8,6 +8,7 @@ require "json"
 
 
 
+
 # This filter parses a source and apply a cipher or decipher before
 # storing it in the target.
 
@@ -149,22 +150,26 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   #     filter { cipher { max_cipher_reuse => 1000 }}
   config :max_cipher_reuse, :validate => :number, :default => 1
 
-  def crypto_map(red_key,red_iv,key, index_start, index_end,my_hash_map)
+  def crypto_map(red_key,red_iv,key, index_start, index_end,my_hash_map,event)
+
 
     if my_hash_map.empty?
-      printf("im empty \n")
-
-
+      printf("im empty and i add new things \n")
+      my_hash_map["#{red_key}"]  = [{field: key, start: index_start,end: index_end}]
+      printf("here is the result: #{my_hash_map}\n")
     else
-      if red_key == my_hash_map[:"#{red_key}"]   # if you have same red_key just append inside
-        
-      else
-        if !same key add new red key
-        my_hash_map[:"#{red_key}"] = {field: key, start: index_start,end: index_end}
-        printf("added a new field! now i look like this : #{my_hash_map}")
-        #my_hash_map[:"#{red_key}"=>[{field: key, start: index_start,end: index_end}]]
-        end
-      end
+      my_hash_map.each {|first_key, value|
+        printf("here im looking if the root key is the same, so i can add inside\n ")
+        my_hash_map["#{first_key}"] << {field: key, start: index_start,end: index_end} if first_key == red_key
+        printf("this is the map after doing this #{my_hash_map}")
+      }
+      #printf("same key, i append inside and this is the result #{my_hash_map} \n")
+    end
+    if event.get("cipher_info") != nil
+      printf("cipher was already added by another cipher before! here's what I have: #{event.get("cipher_info")} \n")
+      second_hash = event.get("cipher_info")
+      # my_hash_map["#{red_key}"]  = [{field: key, start: index_start,end: index_end}]
+      my_hash_map.merge(second_hash)
     end
 
     return my_hash_map
@@ -173,7 +178,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
 
   def crypto(event, key, value)
-
 
     if (event.get(@source).nil? || event.get(@source).empty?)
       #@logger.debug("Event to filter, event 'source' field: " + @source + " was null(nil) or blank, doing nothing")
@@ -254,6 +258,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
       value.is_a?(Hash) ? visit_json(event,key, value) :
 
         if @value_regex != nil
+
           if (/#{@key_regex}/ =~ key.to_s) != nil && (/#{@value_regex}/ =~ value.to_s) != nil && !value.is_a?(Hash)
             # printf("this is the matched value as index  #{(/#{@value_regex}/ =~ value.to_s)}\n")
             aux = (/#{@value_regex}/.match(value)).to_s # aux will be the matched value.
@@ -262,7 +267,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
             tot_value = value.to_s.length
             wordEndIndex = -(tot_value - (index_start + aux.length)) # where it finishes from the end.
 
-            test = crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,my_hash_map)
+            test = crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,my_hash_map,event)
 
             printf("the word to crypt start at index : #{index_start}\n")
             printf("this is the value lenght: #{tot_value}\n")
@@ -287,6 +292,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
           end
         else
           if (/#{@key_regex}/ =~ key.to_s) != nil
+
             result2 = crypto(event, "#{key}", "#{value}")
             myHash[key] = result2
           else
