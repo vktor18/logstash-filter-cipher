@@ -150,31 +150,33 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   #     filter { cipher { max_cipher_reuse => 1000 }}
   config :max_cipher_reuse, :validate => :number, :default => 1
 
-  def crypto_map(red_key,red_iv,key, index_start, index_end,my_hash_map,event)
+  $my_hash_map = {}
 
 
-    if my_hash_map.empty?
+  def crypto_map(red_key,red_iv,key, index_start,index_end,event)
+
+    subkey = red_key.split('/').last
+    subkey = subkey[/[^.]+/]
+    # printf("#{subkey}\n")
+
+    # if event.get("cipher_info") != nil
+    #   printf("this is what i have #{event.get("cipher_info")}\n")
+    #   printf("cipher was already added by another cipher before! \n")
+    #   printf("now adding #{key} to #{subkey} \n")
+    #   $my_hash_map["#{subkey}"] << {field: key, start: index_start,end: index_end}
+    # else
+    if $my_hash_map.empty?
       printf("im empty and i add new things \n")
-      my_hash_map["#{red_key}"]  = [{field: key, start: index_start,end: index_end}]
-      printf("here is the result: #{my_hash_map}\n")
+      $my_hash_map["#{subkey}"]  = [{field: key, start: index_start,end: index_end}]
+      printf("here is the result: #{$my_hash_map}\n")
     else
-      my_hash_map.each {|first_key, value|
-        printf("here im looking if the root key is the same, so i can add inside\n ")
-        my_hash_map["#{first_key}"] << {field: key, start: index_start,end: index_end} if first_key == red_key
-        printf("this is the map after doing this #{my_hash_map}")
-      }
-      #printf("same key, i append inside and this is the result #{my_hash_map} \n")
-    end
-    if event.get("cipher_info") != nil
-      printf("cipher was already added by another cipher before! here's what I have: #{event.get("cipher_info")} \n")
-      second_hash = event.get("cipher_info")
-      # my_hash_map["#{red_key}"]  = [{field: key, start: index_start,end: index_end}]
-      my_hash_map.merge(second_hash)
-    end
+      printf("Adding key #{key} to #{subkey} \n")
+      $my_hash_map["#{subkey}"] << {field: key, start: index_start,end: index_end}
+      printf("This is the result of the addition #{$my_hash_map} \n")
 
-    return my_hash_map
+    end
+    # end
   end
-
 
 
   def crypto(event, key, value)
@@ -250,9 +252,10 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   end #def crypto
 
 
+
+
   def visit_json(event,parent, myHash)
 
-    my_hash_map = {}
 
     myHash.each do |key, value|
       value.is_a?(Hash) ? visit_json(event,key, value) :
@@ -261,32 +264,26 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
           if (/#{@key_regex}/ =~ key.to_s) != nil && (/#{@value_regex}/ =~ value.to_s) != nil && !value.is_a?(Hash)
             # printf("this is the matched value as index  #{(/#{@value_regex}/ =~ value.to_s)}\n")
-            aux = (/#{@value_regex}/.match(value)).to_s # aux will be the matched value.
+            aux = (/#{@value_regex}/.match(value)).to_s # aux will be the matched value.  .to_s
 
             index_start = (/#{@value_regex}/ =~ value.to_s) # where to start.
             tot_value = value.to_s.length
             wordEndIndex = -(tot_value - (index_start + aux.length)) # where it finishes from the end.
 
-            test = crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,my_hash_map,event)
+            crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,event)
 
-            printf("the word to crypt start at index : #{index_start}\n")
-            printf("this is the value lenght: #{tot_value}\n")
-            printf("this is the index for end of the word in all the value field: #{wordEndIndex}\n")
-            printf("this is the object : #{test}\n")
+            printf("this is the map in the loop : #{$my_hash_map}\n")
 
-
-            event.set("cipher_info", test)
-            printf("this is the new field: #{event.get("cipher_info")}\n")
+            #printf("this is the new field: #{event.get("cipher_info")}\n")
 
             #printf("this is the matched value as the word #{aux}\n")
             result3 = crypto(event, key, aux)
             #printf("this is the result of the encryption #{result3}\n")
             new_value = value.gsub(aux, result3)
             #printf("this is value at the end  #{new_value}\n")
+
+
             myHash[key] = new_value
-
-
-
 
 
           end
@@ -326,11 +323,8 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
       if @key_regex == "message" # keep the previous cipher, crypt everything.
         my_source = event.get(@source)
-        # printf("this is source #{my_source}\n")
         crypt_all = crypto(event, @key_regex, my_source)
-        # printf("this is crypt_All #{crypt_all}\n")
         event.set("message", crypt_all)
-        # printf("ho aggiunto il crypt al messaggio-clone\n")
 
       else
         my_source = event.get(@source)
@@ -340,6 +334,18 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
         message = visit_json(event,nil, parsed)
 
         event.set("message", message.to_json)
+        if event.get("cipher_info") != nil
+          printf("this is cipher info before: #{event.get("cipher_info")}\n")
+          printf("this is hashmap : #{$my_hash_map}\n")
+          event.set("cipher_info", $my_hash_map.merge(event.get("cipher_info")))
+          printf("this is cipher info after: #{event.get("cipher_info")}\n")
+        else
+          printf("in the else, this is cipher info before: #{event.get("cipher_info")}\n")
+          printf("this is hashmap in the else : #{$my_hash_map}\n")
+          event.set("cipher_info", $my_hash_map)
+          printf("in the else, this is cipher info after: #{event.get("cipher_info")}\n")
+        end
+        $my_hash_map.clear
         #printf("Non sono il clone, ho aggiunto crypt al messaggio!\n")
       end
     end
@@ -351,7 +357,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     #printf("this is what i red #{red}\n")
     red_iv = File.read(@path_to_iv)
     #printf("this is the iv i red #{red_iv}")
-
     # config = ParseConfig.new(@path_to_key)
     # #printf("this is config #{config}")
     # key_red = config["key"]
