@@ -153,7 +153,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
   $my_hash_map = {}
 
 
-  def crypto_map(red_key,red_iv,key, index_start,index_end,event)
+  def crypto_map(red_key,red_iv,key, index_start,index_end,event, path)
 
     subkey = red_key.split('/').last
     subkey = subkey[/[^.]+/]
@@ -167,11 +167,11 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     # else
     if $my_hash_map.empty?
       printf("im empty and i add new things \n")
-      $my_hash_map["#{subkey}"]  = [{field: key, start: index_start,end: index_end}]
+      $my_hash_map["#{subkey}"]  = [{field: path + "." + key, start: index_start,end: index_end}]
       printf("here is the result: #{$my_hash_map}\n")
     else
       printf("Adding key #{key} to #{subkey} \n")
-      $my_hash_map["#{subkey}"] << {field: key, start: index_start,end: index_end}
+      $my_hash_map["#{subkey}"] << {field: path + "." + key, start: index_start,end: index_end}
       printf("This is the result of the addition #{$my_hash_map} \n")
 
     end
@@ -254,11 +254,20 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
 
 
-  def visit_json(event,parent, myHash)
+  def visit_json(event,parent, myHash,path)
 
 
     myHash.each do |key, value|
-      value.is_a?(Hash) ? visit_json(event,key, value) :
+      printf("this is the path : #{path}")
+      if parent.to_s.empty?
+        newpath = path + "." + key
+        newpath[0] = ""
+      else
+        newpath = path + "." + key
+      end
+      # newpath = path + "." + key
+
+      value.is_a?(Hash) ? visit_json(event,key, value,newpath) :
 
         if @value_regex != nil
 
@@ -270,13 +279,11 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
             tot_value = value.to_s.length
             wordEndIndex = -(tot_value - (index_start + aux.length)) # where it finishes from the end.
 
-            crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,event)
+            crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,event, path)
 
             printf("this is the map in the loop : #{$my_hash_map}\n")
 
-            #printf("this is the new field: #{event.get("cipher_info")}\n")
 
-            #printf("this is the matched value as the word #{aux}\n")
             result3 = crypto(event, key, aux)
             #printf("this is the result of the encryption #{result3}\n")
             new_value = value.gsub(aux, result3)
@@ -325,25 +332,19 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
         my_source = event.get(@source)
         crypt_all = crypto(event, @key_regex, my_source)
         event.set("message", crypt_all)
-
       else
         my_source = event.get(@source)
         #printf("questa è la source prima dell'hash #{my_source}\n")
         parsed = LogStash::Json.load(my_source)
         #printf("this is my hash : #{parsed}")
-        message = visit_json(event,nil, parsed)
+        my_path = ""
+        message = visit_json(event,nil, parsed, my_path)
 
         event.set("message", message.to_json)
         if event.get("cipher_info") != nil
-          printf("this is cipher info before: #{event.get("cipher_info")}\n")
-          printf("this is hashmap : #{$my_hash_map}\n")
           event.set("cipher_info", $my_hash_map.merge(event.get("cipher_info")))
-          printf("this is cipher info after: #{event.get("cipher_info")}\n")
         else
-          printf("in the else, this is cipher info before: #{event.get("cipher_info")}\n")
-          printf("this is hashmap in the else : #{$my_hash_map}\n")
           event.set("cipher_info", $my_hash_map)
-          printf("in the else, this is cipher info after: #{event.get("cipher_info")}\n")
         end
         $my_hash_map.clear
         #printf("Non sono il clone, ho aggiunto crypt al messaggio!\n")
