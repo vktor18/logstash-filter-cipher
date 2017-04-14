@@ -1,3 +1,6 @@
+# 3.3
+  - add new field in the log: cipher_info. Since cipher plugin support multi encryption of field that can be both fully encrypted or partial encrypted, it was impossible to decrypt partial field simply because people don't know where encryption starts and where it ends. For this reason in this version you find cipher info field in your log that tells you the information about all the key that has been crypted and 2 indices (start and end) that will tell you the exact position of the encrypted value. 
+
 # 3.0
   - Support multi encryption adding new parameters "key_regex" and "value_regex" that allow users to specify regex expression to crypt multifields and/or
    values that match the "value_regex"
