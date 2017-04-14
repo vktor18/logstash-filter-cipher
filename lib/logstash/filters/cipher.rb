@@ -211,7 +211,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
     end
 
     result = @cipher.update(data) + @cipher.final
-    #printf("questo è il result dopo cipher.update + cipher final : #{result}\n")
 
     if @mode == "encrypt"
 
@@ -221,7 +220,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
       end
 
       result =  Base64.strict_encode64(result).encode("utf-8") if @base64 == true
-      #printf("ho matchato! #{key}:#{value} this is the result after encoding #{result}\n")
 
     end
 
@@ -233,9 +231,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
   else
     @total_cipher_uses += 1
-    #result = result.force_encoding("utf-8") if @mode == "decrypt"
     result = result.force_encoding("utf-8") if @mode == "decrypt"
-
 
     #event.set(key,result)
 
@@ -253,7 +249,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
 
 
-
   def visit_json(event,parent, myHash,path)
 
 
@@ -265,14 +260,12 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
       else
         newpath = path + "." + key
       end
-      # newpath = path + "." + key
 
       value.is_a?(Hash) ? visit_json(event,key, value,newpath) :
 
         if @value_regex != nil
 
           if (/#{@key_regex}/ =~ key.to_s) != nil && (/#{@value_regex}/ =~ value.to_s) != nil && !value.is_a?(Hash)
-            # printf("this is the matched value as index  #{(/#{@value_regex}/ =~ value.to_s)}\n")
             aux = (/#{@value_regex}/.match(value)).to_s # aux will be the matched value.  .to_s
 
             index_start = (/#{@value_regex}/ =~ value.to_s) # where to start.
@@ -281,22 +274,15 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
             crypto_map(@path_to_key,@path_to_iv,key,index_start,wordEndIndex,event, path)
 
-            printf("this is the map in the loop : #{$my_hash_map}\n")
-
-
             result3 = crypto(event, key, aux)
-            #printf("this is the result of the encryption #{result3}\n")
             new_value = value.gsub(aux, result3)
-            #printf("this is value at the end  #{new_value}\n")
-
 
             myHash[key] = new_value
-
 
           end
         else
           if (/#{@key_regex}/ =~ key.to_s) != nil
-
+            crypto_map(@path_to_key,@path_to_iv,key,0,0,event, path)
             result2 = crypto(event, "#{key}", "#{value}")
             myHash[key] = result2
           else
@@ -307,9 +293,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
     end
   end
-
-
-
 
 
   def register
@@ -334,9 +317,7 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
         event.set("message", crypt_all)
       else
         my_source = event.get(@source)
-        #printf("questa è la source prima dell'hash #{my_source}\n")
         parsed = LogStash::Json.load(my_source)
-        #printf("this is my hash : #{parsed}")
         my_path = ""
         message = visit_json(event,nil, parsed, my_path)
 
@@ -347,7 +328,6 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
           event.set("cipher_info", $my_hash_map)
         end
         $my_hash_map.clear
-        #printf("Non sono il clone, ho aggiunto crypt al messaggio!\n")
       end
     end
   }
@@ -355,13 +335,9 @@ class LogStash::Filters::Cipher < LogStash::Filters::Base
 
   def init_cipher
     red = File.read(@path_to_key)
-    #printf("this is what i red #{red}\n")
     red_iv = File.read(@path_to_iv)
-    #printf("this is the iv i red #{red_iv}")
     # config = ParseConfig.new(@path_to_key)
-    # #printf("this is config #{config}")
     # key_red = config["key"]
-    # printf("this is the key #{key_red}\n")
     # iv_red = config["iv"]
 
 
